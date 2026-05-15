@@ -115,6 +115,34 @@ resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' = {
   }
 }
 
+resource cosmosDb 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-05-15' = {
+  parent: cosmos
+  name: 'cccp'
+  properties: { resource: { id: 'cccp' } }
+}
+
+resource cosmosDocuments 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-05-15' = {
+  parent: cosmosDb
+  name: 'documents'
+  properties: {
+    resource: {
+      id: 'documents'
+      partitionKey: { paths: ['/filename'], kind: 'Hash' }
+    }
+  }
+}
+
+resource cosmosConversations 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-05-15' = {
+  parent: cosmosDb
+  name: 'conversations'
+  properties: {
+    resource: {
+      id: 'conversations'
+      partitionKey: { paths: ['/session_id'], kind: 'Hash' }
+    }
+  }
+}
+
 // --- Storage Account (recordings + transcripts) ---
 resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: 'stcccp${suffix}'
@@ -137,6 +165,11 @@ resource recordingsContainer 'Microsoft.Storage/storageAccounts/blobServices/con
 resource transcriptsContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
   parent: blobService
   name: 'transcripts'
+}
+
+resource documentsContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
+  parent: blobService
+  name: 'documents'
 }
 
 // --- Container Registry ---
@@ -193,6 +226,7 @@ resource chatbotApp 'Microsoft.App/containerApps@2024-03-01' = {
           { name: 'PG_CONNECTION_STRING', value: 'host=${postgres.properties.fullyQualifiedDomainName} port=5432 dbname=cccp user=pgadmin password=${pgPassword} sslmode=require' }
           { name: 'COSMOS_ENDPOINT', value: cosmos.properties.documentEndpoint }
           { name: 'COSMOS_KEY', value: cosmos.listKeys().primaryMasterKey }
+          { name: 'AZURE_STORAGE_CONNECTION', value: 'DefaultEndpointsProtocol=https;AccountName=${storage.name};AccountKey=${storage.listKeys().keys[0].value};EndpointSuffix=core.windows.net' }
         ]
       }]
       scale: { minReplicas: 0, maxReplicas: 3 }
@@ -251,3 +285,4 @@ output chatbotUrl string = chatbotApp.properties.configuration.ingress.fqdn
 output realtimeUrl string = realtimeApp.properties.configuration.ingress.fqdn
 output acrName string = acr.name
 output storageAccount string = storage.name
+output storageConnection string = 'DefaultEndpointsProtocol=https;AccountName=${storage.name};AccountKey=${storage.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
