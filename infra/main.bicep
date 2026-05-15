@@ -2,7 +2,10 @@
 // All Azure resources for the PoC
 
 @description('Location for all resources')
-param location string = resourceGroup().location
+param location string = 'westeurope'
+
+@description('Location for Container Apps (separate to avoid capacity issues)')
+param containerAppsLocation string = 'northeurope'
 
 @description('Unique suffix for resource names')
 param suffix string = uniqueString(resourceGroup().id)
@@ -14,7 +17,7 @@ param pgPassword string
 // --- Azure OpenAI ---
 resource openai 'Microsoft.CognitiveServices/accounts@2024-04-01-preview' = {
   name: 'oai-cccp-${suffix}'
-  location: 'swedencentral'
+  location: 'westeurope'
   kind: 'OpenAI'
   sku: { name: 'S0' }
   properties: {
@@ -25,17 +28,17 @@ resource openai 'Microsoft.CognitiveServices/accounts@2024-04-01-preview' = {
 
 resource gpt4o 'Microsoft.CognitiveServices/accounts/deployments@2024-04-01-preview' = {
   parent: openai
-  name: 'gpt-4o'
-  sku: { name: 'Standard', capacity: 30 }
+  name: 'gpt-5-4'
+  sku: { name: 'GlobalStandard', capacity: 30 }
   properties: {
-    model: { format: 'OpenAI', name: 'gpt-4o', version: '2024-08-06' }
+    model: { format: 'OpenAI', name: 'gpt-5.4', version: '2026-03-05' }
   }
 }
 
 resource embedding 'Microsoft.CognitiveServices/accounts/deployments@2024-04-01-preview' = {
   parent: openai
   name: 'text-embedding-3-small'
-  sku: { name: 'Standard', capacity: 120 }
+  sku: { name: 'GlobalStandard', capacity: 120 }
   properties: {
     model: { format: 'OpenAI', name: 'text-embedding-3-small', version: '1' }
   }
@@ -154,7 +157,7 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
 // --- Container Apps Environment ---
 resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: 'cae-cccp-${suffix}'
-  location: location
+  location: containerAppsLocation
   properties: {
     appLogsConfiguration: {
       destination: 'log-analytics'
@@ -169,7 +172,7 @@ resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
 // --- Container App: Chatbot ---
 resource chatbotApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: 'cccp-chatbot'
-  location: location
+  location: containerAppsLocation
   properties: {
     managedEnvironmentId: containerEnv.id
     configuration: {
@@ -185,7 +188,7 @@ resource chatbotApp 'Microsoft.App/containerApps@2024-03-01' = {
         env: [
           { name: 'AZURE_OPENAI_ENDPOINT', value: openai.properties.endpoint }
           { name: 'AZURE_OPENAI_KEY', value: openai.listKeys().key1 }
-          { name: 'AZURE_OPENAI_CHAT_DEPLOYMENT', value: 'gpt-4o' }
+          { name: 'AZURE_OPENAI_CHAT_DEPLOYMENT', value: 'gpt-5-4' }
           { name: 'AZURE_OPENAI_EMBEDDING_DEPLOYMENT', value: 'text-embedding-3-small' }
           { name: 'PG_CONNECTION_STRING', value: 'host=${postgres.properties.fullyQualifiedDomainName} port=5432 dbname=cccp user=pgadmin password=${pgPassword} sslmode=require' }
           { name: 'COSMOS_ENDPOINT', value: cosmos.properties.documentEndpoint }
@@ -200,7 +203,7 @@ resource chatbotApp 'Microsoft.App/containerApps@2024-03-01' = {
 // --- Container App: Real-time Agent ---
 resource realtimeApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: 'cccp-realtime'
-  location: location
+  location: containerAppsLocation
   properties: {
     managedEnvironmentId: containerEnv.id
     configuration: {
