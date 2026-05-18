@@ -285,4 +285,3 @@ output chatbotUrl string = chatbotApp.properties.configuration.ingress.fqdn
 output realtimeUrl string = realtimeApp.properties.configuration.ingress.fqdn
 output acrName string = acr.name
 output storageAccount string = storage.name
-output storageConnection string = 'DefaultEndpointsProtocol=https;AccountName=${storage.name};AccountKey=${storage.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
