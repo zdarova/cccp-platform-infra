@@ -253,6 +253,8 @@ resource realtimeApp 'Microsoft.App/containerApps@2024-03-01' = {
         env: [
           { name: 'AZURE_OPENAI_ENDPOINT', value: openai.properties.endpoint }
           { name: 'AZURE_OPENAI_KEY', value: openai.listKeys().key1 }
+          { name: 'AZURE_OPENAI_CHAT_DEPLOYMENT', value: 'gpt-5-4' }
+          { name: 'AZURE_OPENAI_EMBEDDING_DEPLOYMENT', value: 'text-embedding-3-small' }
           { name: 'AZURE_SPEECH_KEY', value: speech.listKeys().key1 }
           { name: 'AZURE_SPEECH_REGION', value: location }
           { name: 'EVENT_HUB_CONNECTION', value: eventHubNamespace.listKeys().primaryConnectionString }
